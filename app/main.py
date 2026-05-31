@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.core.scheduler import init_scheduler, shutdown_scheduler
 from app.api.v1 import etfs, pools, market_data, indicators, analysis, etl
 
 settings = get_settings()
@@ -47,10 +48,10 @@ app.include_router(etl.router, prefix=f"{settings.api_v1_prefix}/etl", tags=["ET
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup."""
-    pass  # TODO: initialize scheduler (Task 14)
+    init_scheduler()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Run on application shutdown."""
-    pass  # TODO: cleanup resources
+    shutdown_scheduler()
