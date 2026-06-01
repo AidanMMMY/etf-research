@@ -14,6 +14,7 @@ from app.services.pool_service import PoolService
 from app.services.market_data_service import MarketDataService
 from app.services.indicator_service import IndicatorService
 from app.services.analysis_service import AnalysisService
+from app.services.scoring_service import ScoringService
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -48,3 +49,8 @@ def get_indicator_service(db: Session = Depends(get_db)) -> IndicatorService:
 def get_analysis_service(db: Session = Depends(get_db)) -> AnalysisService:
     """Provide an AnalysisService instance with a DB session."""
     return AnalysisService(db)
+
+
+def get_scoring_service(db: Session = Depends(get_db)) -> ScoringService:
+    """Provide a ScoringService instance with a DB session."""
+    return ScoringService(db)

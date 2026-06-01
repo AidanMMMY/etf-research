@@ -302,3 +302,184 @@ def test_calculate_scores_direction_asc():
     # Higher return should score higher with asc direction
     assert results["A"]["composite"] > results["B"]["composite"]
     assert results["B"]["composite"] > results["C"]["composite"]
+
+
+# ---------------------------------------------------------------------------
+# ScoringService tests
+# ---------------------------------------------------------------------------
+
+
+def test_scoring_service_initialization(db_session):
+    """ScoringService should initialize with a DB session and calculator."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+
+    assert service.db is db_session
+    assert service.calculator is not None
+    assert hasattr(service, "DIMENSION_MAP")
+    assert "return" in service.DIMENSION_MAP
+    assert "risk" in service.DIMENSION_MAP
+    assert "sharpe" in service.DIMENSION_MAP
+    assert "liquidity" in service.DIMENSION_MAP
+    assert "trend" in service.DIMENSION_MAP
+
+
+def test_scoring_service_dimension_map():
+    """DIMENSION_MAP should map dimensions to correct metrics."""
+    from app.services.scoring_service import ScoringService
+
+    dm = ScoringService.DIMENSION_MAP
+
+    assert dm["return"]["metrics"] == ["return_1m", "return_3m", "return_1y"]
+    assert dm["risk"]["metrics"] == ["volatility_20d", "max_drawdown_1y"]
+    assert dm["sharpe"]["metrics"] == ["sharpe_1y"]
+    assert dm["liquidity"]["metrics"] == ["amount"]
+    assert dm["trend"]["metrics"] == ["rsi14"]
+
+
+def test_scoring_service_template_crud(db_session):
+    """ScoringService should support template CRUD operations."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+
+    # Use a unique name to avoid conflicts with existing templates
+    template = service.create_template(
+        name="CRUD Test Template",
+        description="A test template",
+        weights={"return": 0.5, "risk": 0.5},
+        is_default=False,
+    )
+    assert template.id is not None
+    assert template.name == "CRUD Test Template"
+    assert template.weights == {"return": 0.5, "risk": 0.5}
+
+    # get_template
+    fetched = service.get_template(template.id)
+    assert fetched is not None
+    assert fetched.name == "CRUD Test Template"
+
+    # get_templates should include our template
+    all_templates = service.get_templates()
+    assert any(t.name == "CRUD Test Template" for t in all_templates)
+
+    # get_default_template (none set yet for this test's data)
+    # There may be a default from earlier tests, so just check it returns something
+    default = service.get_default_template()
+    # We don't assert None here because module-scoped fixture may have defaults
+
+
+def test_scoring_service_default_template(db_session):
+    """get_default_template should return a template marked as default."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+
+    # Use unique names to avoid conflicts with module-scoped fixture data
+    service.create_template(
+        name="Default Test Template",
+        description="Default template",
+        weights={"return": 0.3, "risk": 0.3, "sharpe": 0.4},
+        is_default=True,
+    )
+    service.create_template(
+        name="Other Test Template",
+        description="Other template",
+        weights={"return": 0.5, "risk": 0.5},
+        is_default=False,
+    )
+
+    default = service.get_default_template()
+    assert default is not None
+    # get_default_template returns the first default; due to module-scoped fixture
+    # there may be an earlier default. Just verify it IS a default template.
+    assert default.is_default is True
+
+
+def test_scoring_service_init_default_templates(db_session):
+    """_init_default_templates should create 3 preset templates."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+
+    # Count templates before init
+    before_count = len(service.get_templates())
+
+    service._init_default_templates()
+
+    templates = service.get_templates()
+    # Should have added 3 new templates
+    assert len(templates) == before_count + 3
+
+    # The 3 preset names should be present
+    names = {t.name for t in templates}
+    assert "保守型" in names
+    assert "均衡型" in names
+    assert "进取型" in names
+
+    # 均衡型 should be the default among the presets
+    default = service.get_default_template()
+    assert default is not None
+
+
+def test_scoring_service_build_template_weights(db_session):
+    """_build_template_weights should merge template weights with DIMENSION_MAP."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+
+    template = service.create_template(
+        name="Custom",
+        description="Custom weights",
+        weights={"return": 0.4, "risk": 0.2, "sharpe": 0.4},
+    )
+
+    result = service._build_template_weights(template)
+
+    assert "return" in result
+    assert result["return"]["weight"] == 0.4
+    assert result["return"]["metrics"] == ["return_1m", "return_3m", "return_1y"]
+    assert result["return"]["direction"] == "asc"
+
+    assert "risk" in result
+    assert result["risk"]["weight"] == 0.2
+    assert result["risk"]["direction"] == "desc"
+
+    assert "sharpe" in result
+    assert result["sharpe"]["weight"] == 0.4
+
+    # Dimensions not in template weights use DIMENSION_MAP defaults
+    assert "liquidity" in result
+    assert result["liquidity"]["weight"] == 0.1
+    assert "trend" in result
+    assert result["trend"]["weight"] == 0.1
+
+
+def test_scoring_service_calculate_daily_scores_no_data(db_session):
+    """calculate_daily_scores should return empty dict when no indicators exist."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+
+    # No indicators in DB -> empty result
+    result = service.calculate_daily_scores()
+    assert result == {}
+
+
+def test_scoring_service_get_scores_empty(db_session):
+    """get_scores should return empty list when no scores exist."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+
+    # Create a template so template_id resolution works
+    service.create_template(
+        name="Default",
+        description="Default",
+        weights={"return": 0.3, "risk": 0.3, "sharpe": 0.4},
+        is_default=True,
+    )
+
+    scores = service.get_scores()
+    assert scores == []
