@@ -157,3 +157,5 @@ alembic/versions/*.pyc
 *.db
 *.sqlite
 .worktrees/
+.claude/
+.superpowers/
