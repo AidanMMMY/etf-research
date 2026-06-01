@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.core.scheduler import init_scheduler, shutdown_scheduler
-from app.api.v1 import etfs, pools, market_data, indicators, analysis, etl, scoring
+from app.api.v1 import etfs, pools, market_data, indicators, analysis, etl, scoring, screening
 
 settings = get_settings()
 
@@ -45,6 +45,9 @@ app.include_router(
 app.include_router(etl.router, prefix=f"{settings.api_v1_prefix}/etl", tags=["ETL"])
 app.include_router(
     scoring.router, prefix=f"{settings.api_v1_prefix}/scores", tags=["Scoring"]
+)
+app.include_router(
+    screening.router, prefix=f"{settings.api_v1_prefix}/screen", tags=["Screening"]
 )
 
 
