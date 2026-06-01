@@ -49,6 +49,15 @@ class AuthSettings(BaseSettings):
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "admin123"
 
+    # Multi-user credentials: username -> password
+    USERS: dict[str, str] = {
+        "admin": "admin123",
+        "Aidan": "19880402",
+        "Tee": "19790615",
+        "Zack": "19911213",
+        "Philip": "19900225",
+    }
+
     model_config = SettingsConfigDict(
         env_prefix="AUTH_",
         env_file=".env",

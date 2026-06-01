@@ -49,10 +49,11 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 @router.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest):
-    if (request.username == auth_settings.ADMIN_USERNAME and
-        request.password == auth_settings.ADMIN_PASSWORD):
-        token = create_access_token(request.username, "admin")
-        return LoginResponse(token=token, user={"username": request.username, "role": "admin"})
+    expected_password = auth_settings.USERS.get(request.username)
+    if expected_password and request.password == expected_password:
+        role = "admin" if request.username == "admin" else "user"
+        token = create_access_token(request.username, role)
+        return LoginResponse(token=token, user={"username": request.username, "role": role})
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
