@@ -1,0 +1,212 @@
+{% extends "reports/base.html" %}
+
+{% block title %}{{ pool_name }} - 池周报{% endblock %}
+{% block report_title %}{{ pool_name }} - 池周报{% endblock %}
+{% block report_meta %}报告日期：{{ report_date }} | 成员数：{{ member_count }} | 生成时间：{{ generated_at }}{% endblock %}
+
+{% block content %}
+
+<!-- Module 1: Overview -->
+<div class="card">
+    <div class="card-header">
+        <h2>📊 概览</h2>
+    </div>
+    <div class="card-body">
+        <div class="grid-4">
+            <div class="stat-box">
+                <div class="stat-value">{{ member_count }}</div>
+                <div class="stat-label">池内成员</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" style="color: var(--success);">{{ up_count }}</div>
+                <div class="stat-label">上涨</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" style="color: var(--danger);">{{ down_count }}</div>
+                <div class="stat-label">下跌</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{{ avg_score|default(0)|round(1) }}</div>
+                <div class="stat-label">平均综合评分</div>
+            </div>
+        </div>
+
+        <h3 style="margin-top: 24px; font-size: 15px; color: var(--text-secondary);">实时快照</h3>
+        <table style="margin-top: 12px;">
+            <thead>
+                <tr>
+                    <th>代码</th>
+                    <th>名称</th>
+                    <th>类别</th>
+                    <th class="text-right">周收益</th>
+                    <th class="text-right">月收益</th>
+                    <th class="text-right">年收益</th>
+                    <th class="text-center">风险等级</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in overview_data %}
+                <tr>
+                    <td><strong>{{ item.etf_code }}</strong></td>
+                    <td>{{ item.etf_name }}</td>
+                    <td>{{ item.category or '-' }}</td>
+                    <td class="text-right {% if item.return_1w > 0 %}stat-change up{% elif item.return_1w < 0 %}stat-change down{% endif %}">{{ "%.2f"|format(item.return_1w) }}%</td>
+                    <td class="text-right {% if item.return_1m > 0 %}stat-change up{% elif item.return_1m < 0 %}stat-change down{% endif %}">{{ "%.2f"|format(item.return_1m) }}%</td>
+                    <td class="text-right {% if item.return_1y > 0 %}stat-change up{% elif item.return_1y < 0 %}stat-change down{% endif %}">{{ "%.2f"|format(item.return_1y) }}%</td>
+                    <td class="text-center">{{ item.risk_badge|safe }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Module 2: Returns Analysis -->
+<div class="card">
+    <div class="card-header">
+        <h2>📈 收益分析</h2>
+    </div>
+    <div class="card-body">
+        <table>
+            <thead>
+                <tr>
+                    <th>代码</th>
+                    <th>名称</th>
+                    <th class="text-right">周收益</th>
+                    <th class="text-right">月收益</th>
+                    <th class="text-right">季收益</th>
+                    <th class="text-right">半年收益</th>
+                    <th class="text-right">年收益</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in returns_data %}
+                <tr>
+                    <td><strong>{{ item.etf_code }}</strong></td>
+                    <td>{{ item.etf_name }}</td>
+                    <td class="text-right {% if item.return_1w > 0 %}stat-change up{% elif item.return_1w < 0 %}stat-change down{% endif %}">{{ "%.2f"|format(item.return_1w) }}%</td>
+                    <td class="text-right {% if item.return_1m > 0 %}stat-change up{% elif item.return_1m < 0 %}stat-change down{% endif %}">{{ "%.2f"|format(item.return_1m) }}%</td>
+                    <td class="text-right {% if item.return_3m > 0 %}stat-change up{% elif item.return_3m < 0 %}stat-change down{% endif %}">{{ "%.2f"|format(item.return_3m) }}%</td>
+                    <td class="text-right {% if item.return_6m > 0 %}stat-change up{% elif item.return_6m < 0 %}stat-change down{% endif %}">{{ "%.2f"|format(item.return_6m) }}%</td>
+                    <td class="text-right {% if item.return_1y > 0 %}stat-change up{% elif item.return_1y < 0 %}stat-change down{% endif %}">{{ "%.2f"|format(item.return_1y) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Module 3: Risk Analysis -->
+<div class="card">
+    <div class="card-header">
+        <h2>⚠️ 风险分析</h2>
+    </div>
+    <div class="card-body">
+        <table>
+            <thead>
+                <tr>
+                    <th>代码</th>
+                    <th>名称</th>
+                    <th class="text-right">20日波动率</th>
+                    <th class="text-right">最大回撤</th>
+                    <th class="text-right">夏普比率</th>
+                    <th class="text-center">风险等级</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in risk_data %}
+                <tr>
+                    <td><strong>{{ item.etf_code }}</strong></td>
+                    <td>{{ item.etf_name }}</td>
+                    <td class="text-right">{{ "%.2f"|format(item.volatility_20d) }}%</td>
+                    <td class="text-right">{{ "%.2f"|format(item.max_drawdown_1y) }}%</td>
+                    <td class="text-right">{{ "%.2f"|format(item.sharpe_1y) }}</td>
+                    <td class="text-center">{{ item.risk_badge|safe }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Module 4: Composite Scoring -->
+<div class="card">
+    <div class="card-header">
+        <h2>🏆 综合评分</h2>
+    </div>
+    <div class="card-body">
+        <table>
+            <thead>
+                <tr>
+                    <th class="text-center">排名</th>
+                    <th>代码</th>
+                    <th>名称</th>
+                    <th class="text-right">综合评分</th>
+                    <th>收益维度</th>
+                    <th>风险维度</th>
+                    <th>夏普维度</th>
+                    <th>流动性</th>
+                    <th>趋势</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in scores_data %}
+                <tr>
+                    <td class="text-center">
+                        {% if item.rank <= 3 %}
+                        <span class="rank rank-{{ item.rank }}">{{ item.rank }}</span>
+                        {% else %}
+                        <span class="rank rank-other">{{ item.rank }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ item.etf_code }}</strong></td>
+                    <td>{{ item.etf_name }}</td>
+                    <td class="text-right"><strong>{{ "%.1f"|format(item.composite_score) }}</strong></td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill {{ item.score_return_class }}" style="width: {{ item.score_return }}%;"></div>
+                            </div>
+                            <span class="score-value">{{ "%.0f"|format(item.score_return) }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill {{ item.score_risk_class }}" style="width: {{ item.score_risk }}%;"></div>
+                            </div>
+                            <span class="score-value">{{ "%.0f"|format(item.score_risk) }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill {{ item.score_sharpe_class }}" style="width: {{ item.score_sharpe }}%;"></div>
+                            </div>
+                            <span class="score-value">{{ "%.0f"|format(item.score_sharpe) }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill {{ item.score_liquidity_class }}" style="width: {{ item.score_liquidity }}%;"></div>
+                            </div>
+                            <span class="score-value">{{ "%.0f"|format(item.score_liquidity) }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill {{ item.score_trend_class }}" style="width: {{ item.score_trend }}%;"></div>
+                            </div>
+                            <span class="score-value">{{ "%.0f"|format(item.score_trend) }}</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
