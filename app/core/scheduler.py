@@ -9,6 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 from app.core.database import SessionLocal
 from app.data.pipelines.a_share import AShareETLPipeline
 from app.data.indicators.calculator import batch_calculate_indicators
+from app.services.scoring_service import ScoringService
 
 scheduler = BackgroundScheduler()
 
@@ -36,6 +37,18 @@ def run_indicator_calculation():
         db.close()
 
 
+def run_score_calculation():
+    """Run the daily ETF composite score calculation for all templates."""
+    db = SessionLocal()
+    try:
+        service = ScoringService(db)
+        results = service.calculate_daily_scores()
+        total = sum(results.values())
+        print(f"[Scheduler] Score calculation: {total} scores across {len(results)} templates")
+    finally:
+        db.close()
+
+
 def init_scheduler():
     """Initialize and start the background scheduler.
 
@@ -55,6 +68,13 @@ def init_scheduler():
         trigger=CronTrigger(hour=8, minute=0),
         id="indicator_calculation",
         name="指标批量计算",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_score_calculation,
+        trigger=CronTrigger(hour=8, minute=30),
+        id="score_calculation",
+        name="评分日终计算",
         replace_existing=True,
     )
     scheduler.start()
