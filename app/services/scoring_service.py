@@ -194,6 +194,20 @@ class ScoringService:
         Uses PostgreSQL ``INSERT ... ON CONFLICT DO UPDATE`` when available.
         Falls back to a simple bulk insert for SQLite (used in tests).
         """
+        # Convert numpy types to native Python types for PostgreSQL compatibility
+        import numpy as np
+
+        def _convert(value):
+            if isinstance(value, (np.integer, np.floating)):
+                return float(value)
+            if isinstance(value, np.ndarray):
+                return value.tolist()
+            return value
+
+        score_records = [
+            {k: _convert(v) for k, v in record.items()} for record in score_records
+        ]
+
         try:
             from sqlalchemy.dialects.postgresql import insert as pg_insert
 

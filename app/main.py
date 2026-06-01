@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.core.scheduler import init_scheduler, shutdown_scheduler
-from app.api.v1 import auth, etfs, pools, market_data, indicators, analysis, etl, scoring, screening, reports
+from app.api.v1 import auth, etfs, pools, market_data, indicators, analysis, etl, scoring, screening, reports, stats
 
 settings = get_settings()
 
@@ -58,6 +58,9 @@ app.include_router(
 )
 app.include_router(
     auth.router, prefix=f"{settings.api_v1_prefix}/auth", tags=["auth"]
+)
+app.include_router(
+    stats.router, prefix=f"{settings.api_v1_prefix}/stats", tags=["Statistics"]
 )
 
 # Serve frontend static files

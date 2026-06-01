@@ -1,16 +1,22 @@
 import { Row, Col, Card, Table, List, Statistic } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
 import { useETFList } from '@/hooks/useETFList';
+import { statsApi } from '@/api/stats';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
-// formatAmount available for future use
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { data: scoresData } = useScores({ limit: 10 });
   const { data: etfList } = useETFList({ page_size: 5 });
+  const { data: stats } = useQuery({
+    queryKey: ['stats-overview'],
+    queryFn: () => statsApi.overview().then((r) => r.data),
+    staleTime: 60_000,
+  });
 
   const scoreColumns = [
     { title: '排名', dataIndex: 'rank_overall', width: 60 },
@@ -37,22 +43,39 @@ export default function Dashboard() {
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={12} sm={6}>
           <Card>
-            <Statistic title="ETF总数" value={1486} />
+            <Statistic
+              title="ETF总数"
+              value={stats?.etf_count ?? 0}
+              loading={!stats}
+            />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card>
-            <Statistic title="今日成交" value={892} suffix="亿" />
+            <Statistic
+              title="评分覆盖"
+              value={stats?.score_count ?? 0}
+              suffix={`/ ${stats?.etf_count ?? 0}`}
+              loading={!stats}
+            />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card>
-            <Statistic title="上涨" value={856} valueStyle={{ color: '#cf1322' }} />
+            <Statistic
+              title="分类数"
+              value={stats?.category_count ?? 0}
+              loading={!stats}
+            />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card>
-            <Statistic title="下跌" value={630} valueStyle={{ color: '#3f8600' }} />
+            <Statistic
+              title="评分模板"
+              value={stats?.template_count ?? 0}
+              loading={!stats}
+            />
           </Card>
         </Col>
       </Row>
