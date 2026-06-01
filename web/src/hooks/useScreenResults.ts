@@ -1,0 +1,27 @@
+import { useQuery } from '@tanstack/react-query';
+import { screenApi } from '@/api';
+import type { ScreenFilters } from '@/types/screen';
+
+export function useScreenResults(filters?: ScreenFilters) {
+  return useQuery({
+    queryKey: ['screen', filters],
+    queryFn: () => screenApi.query(filters).then((r) => r.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useScreenPresets() {
+  return useQuery({
+    queryKey: ['screen-presets'],
+    queryFn: () => screenApi.presets().then((r) => r.data.presets),
+    staleTime: 300_000,
+  });
+}
+
+export function useScreenCategories() {
+  return useQuery({
+    queryKey: ['screen-categories'],
+    queryFn: () => screenApi.categories().then((r) => r.data.categories),
+    staleTime: 300_000,
+  });
+}

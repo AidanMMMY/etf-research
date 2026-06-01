@@ -1,11 +1,15 @@
 """FastAPI application entry point."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.core.scheduler import init_scheduler, shutdown_scheduler
-from app.api.v1 import etfs, pools, market_data, indicators, analysis, etl, scoring, screening, reports
+from app.api.v1 import auth, etfs, pools, market_data, indicators, analysis, etl, scoring, screening, reports
 
 settings = get_settings()
 
@@ -52,6 +56,14 @@ app.include_router(
 app.include_router(
     reports.router, prefix=f"{settings.api_v1_prefix}/reports", tags=["Reports"]
 )
+app.include_router(
+    auth.router, prefix=f"{settings.api_v1_prefix}/auth", tags=["auth"]
+)
+
+# Serve frontend static files
+web_dist = Path(__file__).parent.parent / "web" / "dist"
+if web_dist.exists():
+    app.mount("/", StaticFiles(directory=str(web_dist), html=True), name="static")
 
 
 @app.on_event("startup")

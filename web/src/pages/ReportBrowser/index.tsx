@@ -1,0 +1,108 @@
+import { useState } from 'react';
+import { Table, Card, Button, Tag, Space, Modal, Form, Select, message } from 'antd';
+import { EyeOutlined, DownloadOutlined, PlusOutlined } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import { reportApi, poolApi } from '@/api';
+import type { ReportMetadata } from '@/types/report';
+
+export default function ReportBrowser() {
+  const [selectedReport, setSelectedReport] = useState<ReportMetadata | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form] = Form.useForm();
+
+  const { data: reports, refetch } = useQuery({
+    queryKey: ['reports'],
+    queryFn: () => reportApi.list({ limit: 50 }).then((r) => r.data),
+  });
+
+  const { data: pools } = useQuery({
+    queryKey: ['pools-for-report'],
+    queryFn: () => poolApi.list().then((r) => r.data),
+  });
+
+  const handleGenerate = async (values: { report_type: string; pool_id: number }) => {
+    try {
+      await reportApi.generate({
+        report_type: values.report_type,
+        pool_id: values.pool_id,
+        format: 'html',
+      });
+      message.success('报告生成任务已提交');
+      setIsModalOpen(false);
+      form.resetFields();
+      refetch();
+    } catch {
+      message.error('提交失败');
+    }
+  };
+
+  const statusColors: Record<string, string> = {
+    pending: 'default',
+    running: 'processing',
+    done: 'success',
+    failed: 'error',
+  };
+
+  const columns = [
+    { title: '类型', dataIndex: 'report_type', width: 120 },
+    { title: '日期', dataIndex: 'report_date', width: 120 },
+    { title: '格式', dataIndex: 'format', width: 80 },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      width: 100,
+      render: (v: string) => <Tag color={statusColors[v] || 'default'}>{v}</Tag>,
+    },
+    {
+      title: '操作',
+      width: 180,
+      render: (_: unknown, record: ReportMetadata) => (
+        <Space>
+          <Button type="link" icon={<EyeOutlined />} onClick={() => setSelectedReport(record)}>预览</Button>
+          {record.status === 'done' && (
+            <Button type="link" icon={<DownloadOutlined />} href={reportApi.downloadUrl(record.id)}>下载</Button>
+          )}
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+          生成报告
+        </Button>
+      </div>
+
+      <Table dataSource={reports || []} columns={columns} rowKey="id" />
+
+      {selectedReport?.status === 'done' && (
+        <Card title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} style={{ marginTop: 16 }}>
+          <iframe
+            src={reportApi.downloadUrl(selectedReport.id)}
+            style={{ width: '100%', height: 600, border: '1px solid #d9d9d9' }}
+          />
+        </Card>
+      )}
+
+      <Modal
+        title="生成报告"
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        onOk={() => form.submit()}
+      >
+        <Form form={form} onFinish={handleGenerate} layout="vertical">
+          <Form.Item name="report_type" label="报告类型" rules={[{ required: true }]}>
+            <Select options={[{ label: '池周报', value: 'pool' }, { label: '日报', value: 'daily' }]} />
+          </Form.Item>
+          <Form.Item name="pool_id" label="标的池" rules={[{ required: true }]}>
+            <Select
+              options={pools?.map((p) => ({ label: p.name, value: p.id }))}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+}

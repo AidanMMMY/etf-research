@@ -1,30 +1,40 @@
-FROM python:3.12-slim
+# Multi-stage build for frontend
+FROM node:20-alpine AS frontend-build
+WORKDIR /app/web
+COPY web/package*.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
+# Python backend
+FROM python:3.11-slim
 
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    libpq-dev \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN pip install --no-cache-dir poetry
+# Install Python dependencies
+COPY pyproject.toml poetry.lock ./
+RUN pip install poetry && \
+    poetry config virtualenvs.create false && \
+    poetry lock && \
+    poetry install --without dev --no-root
 
-# Copy dependency files
-COPY pyproject.toml poetry.lock* ./
+# Copy backend code
+COPY app/ ./app/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./
 
-# Configure Poetry: do not create virtualenv in container
-RUN poetry config virtualenvs.create false
+# Copy frontend build output
+COPY --from=frontend-build /app/web/dist ./web/dist
 
-# Install dependencies
-RUN poetry install --no-interaction --no-ansi --no-root
+# Create reports directory
+RUN mkdir -p reports
 
-# Copy application code
-COPY . .
-
-# Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

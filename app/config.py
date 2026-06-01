@@ -41,6 +41,25 @@ class Settings(BaseSettings):
         return self.app_env.lower() == "development"
 
 
+class AuthSettings(BaseSettings):
+    """Authentication settings."""
+
+    SECRET_KEY: str = "your-secret-key-change-in-production"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "admin123"
+
+    model_config = SettingsConfigDict(
+        env_prefix="AUTH_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+
+auth_settings = AuthSettings()
+
+
 @lru_cache
 def get_settings() -> Settings:
     """Return a cached Settings instance.

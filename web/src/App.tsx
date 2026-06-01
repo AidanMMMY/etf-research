@@ -1,0 +1,43 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { routes } from './routes';
+import AppLayout from './components/AppLayout';
+import { useAuthStore } from './stores/auth';
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuthStore();
+  if (!isAuthenticated) {
+    window.location.href = '/login';
+    return null;
+  }
+  return <>{children}</>;
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/login"
+          element={routes.find((r) => r.path === '/login')?.element}
+        />
+        <Route element={<AppLayout />}>
+          {routes
+            .filter((r) => r.auth !== false && r.path !== '/login')
+            .map((route) => (
+              <Route
+                key={route.path}
+                path={route.path}
+                element={
+                  route.auth ? (
+                    <RequireAuth>{route.element}</RequireAuth>
+                  ) : (
+                    route.element
+                  )
+                }
+              />
+            ))}
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
